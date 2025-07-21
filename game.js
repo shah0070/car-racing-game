@@ -1,25 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let width, height, laneWidth;
+let width, height, laneWidth, laneOffset;
 const totalLanes = 4;
-const carWidth = 40;
-const carHeight = 80;
-let laneOffset = 0;
+const carWidth = 40, carHeight = 80;
 
 const player = { lane: 1, x: 0, y: 0 };
 let obstacles = [];
-let score = 0;
-let gameOver = false;
+let score = 0, gameOver = false;
 
-// Resize and center road
+// --- Responsive Canvas ---
 function resizeCanvas() {
   width = window.innerWidth;
   height = window.innerHeight;
   canvas.width = width;
   canvas.height = height;
-
-  laneWidth = Math.min(width * 0.85, 280) / totalLanes;
+  laneWidth = Math.min(width * 0.93, 340) / totalLanes;
   laneOffset = (width - laneWidth * totalLanes) / 2;
   player.y = height - 120;
 }
@@ -27,18 +23,14 @@ window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
 resizeCanvas();
 
-// Level and speed
-function getLevel(score) {
-  return Math.floor(score / 10);
-}
-function getObstacleSpeed(score) {
-  return 2 + getLevel(score) * 0.6;
-}
+// --- Level/Speed ---
+function getLevel(score) { return Math.floor(score / 10); }
+function getObstacleSpeed(score) { return 2 + getLevel(score) * 0.6; }
 function laneToX(lane) {
   return laneOffset + lane * laneWidth + (laneWidth - carWidth) / 2;
 }
 
-// Car drawing with improved visual style
+// --- Modern Car Drawing ---
 function drawCar(x, y, color = '#1976d2') {
   ctx.save();
   ctx.beginPath();
@@ -54,19 +46,16 @@ function drawCar(x, y, color = '#1976d2') {
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.shadowColor = "#000";
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 5;
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Windows
   ctx.fillStyle = "#e0f7fa";
   ctx.fillRect(x + 10, y + 15, carWidth - 20, 18);
 
-  // Racing stripe
   ctx.fillStyle = "#fff";
   ctx.fillRect(x + carWidth / 2 - 2, y + 5, 4, carHeight - 10);
 
-  // Front & back lights
   ctx.fillStyle = "#ffea00";
   ctx.fillRect(x + 10, y + 3, 8, 6);
   ctx.fillRect(x + carWidth - 18, y + 3, 8, 6);
@@ -77,6 +66,7 @@ function drawCar(x, y, color = '#1976d2') {
   ctx.restore();
 }
 
+// --- Road Drawing ---
 function drawRoad() {
   ctx.fillStyle = '#444';
   ctx.fillRect(laneOffset, 0, laneWidth * totalLanes, height);
@@ -84,7 +74,6 @@ function drawRoad() {
   ctx.strokeStyle = "#fff";
   ctx.setLineDash([20, 15]);
   ctx.lineWidth = 2;
-
   for (let i = 1; i < totalLanes; i++) {
     const x = laneOffset + i * laneWidth;
     ctx.beginPath();
@@ -95,63 +84,41 @@ function drawRoad() {
   ctx.setLineDash([]);
 }
 
+// --- Drawing Everything ---
 function draw() {
   ctx.clearRect(0, 0, width, height);
   drawRoad();
-
-  // Draw player
   player.x = laneToX(player.lane);
   drawCar(player.x, player.y, "#0077cc");
-
-  // Draw enemies
-  for (let obs of obstacles) {
-    drawCar(obs.x, obs.y, "#c62828");
-  }
-
+  for (let obs of obstacles) drawCar(obs.x, obs.y, "#c62828");
   ctx.fillStyle = "#fff";
   ctx.font = "18px Arial";
   ctx.fillText("Score: " + score, 10, 30);
-  ctx.fillText("Level: " + getLevel(score), width - 100, 30);
+  ctx.fillText("Level: " + getLevel(score), width - 110, 30);
 }
 
+// --- Game Logic ---
 function createObstacle() {
   const lane = Math.floor(Math.random() * totalLanes);
-  obstacles.push({
-    lane: lane,
-    x: laneToX(lane),
-    y: -carHeight
-  });
+  obstacles.push({ lane, x: laneToX(lane), y: -carHeight });
 }
-
 function updateObstacles() {
   let speed = getObstacleSpeed(score);
-  for (let obs of obstacles) {
-    obs.y += speed;
-  }
-  if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > 160) {
-    createObstacle();
-  }
-
+  for (let obs of obstacles) obs.y += speed;
+  if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > 160) createObstacle();
   for (let i = obstacles.length - 1; i >= 0; i--) {
-    if (obstacles[i].y > height) {
-      obstacles.splice(i, 1);
-      score++;
-    }
+    if (obstacles[i].y > height) { obstacles.splice(i, 1); score++; }
   }
 }
-
 function detectCollision() {
   for (let obs of obstacles) {
     if (
       obs.lane === player.lane &&
       player.y < obs.y + carHeight &&
       player.y + carHeight > obs.y
-    ) {
-      gameOver = true;
-    }
+    ) { gameOver = true; }
   }
 }
-
 function resetGame() {
   player.lane = Math.floor(totalLanes / 2);
   obstacles = [];
@@ -160,7 +127,6 @@ function resetGame() {
   createObstacle();
   gameLoop();
 }
-
 function gameLoop() {
   if (gameOver) {
     ctx.fillStyle = "#fff";
@@ -169,7 +135,7 @@ function gameLoop() {
     ctx.font = "24px Arial";
     ctx.fillText("Score: " + score, width / 2 - 50, height / 2 + 20);
     ctx.font = "18px Arial";
-    ctx.fillText("Tap or press anywhere to restart", width / 2 - 130, height / 2 + 50);
+    ctx.fillText("Tap/Arrow keys to restart", width / 2 - 110, height / 2 + 50);
     return;
   }
   updateObstacles();
@@ -178,26 +144,22 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// 📱 Touch & Desktop Input
+// --- INPUT: Both Touch & Keyboard ---
 canvas.addEventListener("click", handleControl);
 canvas.addEventListener("touchstart", function(e) {
   if (e.touches.length > 0) handleControl(e.touches[0]);
 });
-
-// Main control function
 function handleControl(e) {
-  if (gameOver) {
-    resetGame();
-    return;
-  }
-
-  const cx = e.clientX;
-  if (cx < width / 2 && player.lane > 0) {
-    player.lane--;
-  } else if (cx >= width / 2 && player.lane < totalLanes - 1) {
-    player.lane++;
-  }
+  if (gameOver) { resetGame(); return; }
+  const cx = (e.clientX !== undefined) ? e.clientX : (e.pageX || width / 2);
+  if (cx < width / 2 && player.lane > 0) { player.lane--; }
+  else if (cx >= width / 2 && player.lane < totalLanes - 1) { player.lane++; }
 }
+document.addEventListener('keydown', e => {
+  if (gameOver) { resetGame(); return; }
+  if (e.key === "ArrowLeft" && player.lane > 0) player.lane--;
+  if (e.key === "ArrowRight" && player.lane < totalLanes - 1) player.lane++;
+});
 
-// Start game
+// --- Start the Game ---
 resetGame();
