@@ -9,6 +9,7 @@ const player = { lane: 1, x: 0, y: 0 };
 let obstacles = [];
 let score = 0, gameOver = false;
 
+// Resize Canvas
 function resizeCanvas() {
   width = window.innerWidth;
   height = window.innerHeight;
@@ -22,6 +23,7 @@ window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
 resizeCanvas();
 
+// Game Logic
 function getLevel(score) {
   return Math.floor(score / 10);
 }
@@ -32,6 +34,7 @@ function laneToX(lane) {
   return laneOffset + lane * laneWidth + (laneWidth - carWidth) / 2;
 }
 
+// Draw Player/Enemy Car
 function drawCar(x, y, color = '#1976d2') {
   ctx.save();
   ctx.beginPath();
@@ -70,7 +73,6 @@ function drawCar(x, y, color = '#1976d2') {
 function drawRoad() {
   ctx.fillStyle = '#444';
   ctx.fillRect(laneOffset, 0, laneWidth * totalLanes, height);
-
   ctx.strokeStyle = "#fff";
   ctx.setLineDash([20, 15]);
   ctx.lineWidth = 2;
@@ -90,6 +92,7 @@ function draw() {
   player.x = laneToX(player.lane);
   drawCar(player.x, player.y, "#0077cc");
   for (let obs of obstacles) drawCar(obs.x, obs.y, "#c62828");
+
   ctx.fillStyle = "#fff";
   ctx.font = "18px Arial";
   ctx.fillText("Score: " + score, 10, 30);
@@ -102,11 +105,15 @@ function createObstacle() {
 }
 
 function updateObstacles() {
-  let speed = getObstacleSpeed(score);
+  const speed = getObstacleSpeed(score);
   for (let obs of obstacles) obs.y += speed;
   if (obstacles.length === 0 || obstacles[obstacles.length - 1].y > 160) createObstacle();
+
   for (let i = obstacles.length - 1; i >= 0; i--) {
-    if (obstacles[i].y > height) { obstacles.splice(i, 1); score++; }
+    if (obstacles[i].y > height) {
+      obstacles.splice(i, 1);
+      score++;
+    }
   }
 }
 
@@ -116,7 +123,9 @@ function detectCollision() {
       obs.lane === player.lane &&
       player.y < obs.y + carHeight &&
       player.y + carHeight > obs.y
-    ) { gameOver = true; }
+    ) {
+      gameOver = true;
+    }
   }
 }
 
@@ -146,42 +155,45 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// --- TOUCH & CLICK HANDLING ---
-canvas.addEventListener("touchstart", function(e) {
-  if (e.touches.length > 0) {
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const touchX = touch.clientX - rect.left;
+// ✅ KEYBOARD CONTROLS (1 lane per press)
+document.addEventListener("keydown", (e) => {
+  if (gameOver) return resetGame();
 
-    if (gameOver) return resetGame();
-
-    if (touchX < canvas.width / 2 && player.lane > 0) {
-      player.lane--;
-    } else if (touchX >= canvas.width / 2 && player.lane < totalLanes - 1) {
-      player.lane++;
-    }
+  if (e.key === "ArrowLeft" && player.lane > 0) {
+    player.lane -= 1;
+  } else if (e.key === "ArrowRight" && player.lane < totalLanes - 1) {
+    player.lane += 1;
   }
 });
 
-canvas.addEventListener("click", function(e) {
+// ✅ TOUCH CONTROLS
+canvas.addEventListener("touchstart", (e) => {
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const touchX = touch.clientX - rect.left;
+
+  if (gameOver) return resetGame();
+
+  if (touchX < canvas.width / 2 && player.lane > 0) {
+    player.lane -= 1;
+  } else if (touchX >= canvas.width / 2 && player.lane < totalLanes - 1) {
+    player.lane += 1;
+  }
+});
+
+// ✅ CLICK CONTROLS (Desktop)
+canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
 
   if (gameOver) return resetGame();
 
   if (clickX < canvas.width / 2 && player.lane > 0) {
-    player.lane--;
+    player.lane -= 1;
   } else if (clickX >= canvas.width / 2 && player.lane < totalLanes - 1) {
-    player.lane++;
+    player.lane += 1;
   }
 });
 
-// --- KEYBOARD CONTROLS ---
-document.addEventListener("keydown", (e) => {
-  if (gameOver) return resetGame();
-  if (e.key === "ArrowLeft" && player.lane > 0) player.lane--;
-  if (e.key === "ArrowRight" && player.lane < totalLanes - 1) player.lane++;
-});
-
-// --- START GAME ---
+// Start the game
 resetGame();
