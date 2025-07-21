@@ -9,7 +9,6 @@ const player = { lane: 1, x: 0, y: 0 };
 let obstacles = [];
 let score = 0, gameOver = false;
 
-// --- Responsive Canvas ---
 function resizeCanvas() {
   width = window.innerWidth;
   height = window.innerHeight;
@@ -23,14 +22,16 @@ window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
 resizeCanvas();
 
-// --- Level/Speed ---
-function getLevel(score) { return Math.floor(score / 10); }
-function getObstacleSpeed(score) { return 2 + getLevel(score) * 0.6; }
+function getLevel(score) {
+  return Math.floor(score / 10);
+}
+function getObstacleSpeed(score) {
+  return 2 + getLevel(score) * 0.6;
+}
 function laneToX(lane) {
   return laneOffset + lane * laneWidth + (laneWidth - carWidth) / 2;
 }
 
-// --- Modern Car Drawing ---
 function drawCar(x, y, color = '#1976d2') {
   ctx.save();
   ctx.beginPath();
@@ -66,7 +67,6 @@ function drawCar(x, y, color = '#1976d2') {
   ctx.restore();
 }
 
-// --- Road Drawing ---
 function drawRoad() {
   ctx.fillStyle = '#444';
   ctx.fillRect(laneOffset, 0, laneWidth * totalLanes, height);
@@ -84,7 +84,6 @@ function drawRoad() {
   ctx.setLineDash([]);
 }
 
-// --- Drawing Everything ---
 function draw() {
   ctx.clearRect(0, 0, width, height);
   drawRoad();
@@ -94,14 +93,14 @@ function draw() {
   ctx.fillStyle = "#fff";
   ctx.font = "18px Arial";
   ctx.fillText("Score: " + score, 10, 30);
-  ctx.fillText("Level: " + getLevel(score), width - 110, 30);
+  ctx.fillText("Level: " + getLevel(score), width - 100, 30);
 }
 
-// --- Game Logic ---
 function createObstacle() {
   const lane = Math.floor(Math.random() * totalLanes);
   obstacles.push({ lane, x: laneToX(lane), y: -carHeight });
 }
+
 function updateObstacles() {
   let speed = getObstacleSpeed(score);
   for (let obs of obstacles) obs.y += speed;
@@ -110,6 +109,7 @@ function updateObstacles() {
     if (obstacles[i].y > height) { obstacles.splice(i, 1); score++; }
   }
 }
+
 function detectCollision() {
   for (let obs of obstacles) {
     if (
@@ -119,6 +119,7 @@ function detectCollision() {
     ) { gameOver = true; }
   }
 }
+
 function resetGame() {
   player.lane = Math.floor(totalLanes / 2);
   obstacles = [];
@@ -127,6 +128,7 @@ function resetGame() {
   createObstacle();
   gameLoop();
 }
+
 function gameLoop() {
   if (gameOver) {
     ctx.fillStyle = "#fff";
@@ -135,7 +137,7 @@ function gameLoop() {
     ctx.font = "24px Arial";
     ctx.fillText("Score: " + score, width / 2 - 50, height / 2 + 20);
     ctx.font = "18px Arial";
-    ctx.fillText("Tap/Arrow keys to restart", width / 2 - 110, height / 2 + 50);
+    ctx.fillText("Tap or press arrow keys to restart", width / 2 - 140, height / 2 + 50);
     return;
   }
   updateObstacles();
@@ -144,22 +146,42 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// --- INPUT: Both Touch & Keyboard ---
-canvas.addEventListener("click", handleControl);
+// --- TOUCH & CLICK HANDLING ---
 canvas.addEventListener("touchstart", function(e) {
-  if (e.touches.length > 0) handleControl(e.touches[0]);
+  if (e.touches.length > 0) {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+
+    if (gameOver) return resetGame();
+
+    if (touchX < canvas.width / 2 && player.lane > 0) {
+      player.lane--;
+    } else if (touchX >= canvas.width / 2 && player.lane < totalLanes - 1) {
+      player.lane++;
+    }
+  }
 });
-function handleControl(e) {
-  if (gameOver) { resetGame(); return; }
-  const cx = (e.clientX !== undefined) ? e.clientX : (e.pageX || width / 2);
-  if (cx < width / 2 && player.lane > 0) { player.lane--; }
-  else if (cx >= width / 2 && player.lane < totalLanes - 1) { player.lane++; }
-}
-document.addEventListener('keydown', e => {
-  if (gameOver) { resetGame(); return; }
+
+canvas.addEventListener("click", function(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+
+  if (gameOver) return resetGame();
+
+  if (clickX < canvas.width / 2 && player.lane > 0) {
+    player.lane--;
+  } else if (clickX >= canvas.width / 2 && player.lane < totalLanes - 1) {
+    player.lane++;
+  }
+});
+
+// --- KEYBOARD CONTROLS ---
+document.addEventListener("keydown", (e) => {
+  if (gameOver) return resetGame();
   if (e.key === "ArrowLeft" && player.lane > 0) player.lane--;
   if (e.key === "ArrowRight" && player.lane < totalLanes - 1) player.lane++;
 });
 
-// --- Start the Game ---
+// --- START GAME ---
 resetGame();
